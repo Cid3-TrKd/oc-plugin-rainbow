@@ -38,8 +38,8 @@ export type RainbowBuffer = {
   height: number;
   buffers: {
     char: ArrayLike<number>;
-    fg: Float32Array;
-    bg: Float32Array;
+    fg: Uint16Array;
+    bg: Uint16Array;
   };
 };
 
@@ -184,8 +184,15 @@ const syncThemeCache = (cache: ThemeCache, theme: RainbowTheme) => {
   cache.bgMarks = bgMarks;
 };
 
+const channel = (value: number) => (value & 255) / 255;
+
+const byte = (value: number) => {
+  const clamped = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+  return Math.round(clamped * 255);
+};
+
 const paintFull = (
-  buf: Float32Array,
+  buf: Uint16Array,
   slot: number,
   palette: number[],
   paletteCount: number,
@@ -206,13 +213,14 @@ const paintFull = (
   const g = baseG + (nextG - baseG) * gap;
   const b = baseB + (nextB - baseB) * gap;
 
-  buf[slot] = r;
-  buf[slot + 1] = g;
-  buf[slot + 2] = b;
+  buf[slot] = byte(r);
+  buf[slot + 1] = byte(g);
+  buf[slot + 2] = byte(b);
+  buf[slot + 3] = 255;
 };
 
 const paintBlend = (
-  buf: Float32Array,
+  buf: Uint16Array,
   slot: number,
   palette: number[],
   paletteCount: number,
@@ -233,13 +241,14 @@ const paintBlend = (
   const r = baseR + (nextR - baseR) * gap;
   const g = baseG + (nextG - baseG) * gap;
   const b = baseB + (nextB - baseB) * gap;
-  const prevR = buf[slot]!;
-  const prevG = buf[slot + 1]!;
-  const prevB = buf[slot + 2]!;
+  const prevR = channel(buf[slot]!);
+  const prevG = channel(buf[slot + 1]!);
+  const prevB = channel(buf[slot + 2]!);
 
-  buf[slot] = prevR + (r - prevR) * amt;
-  buf[slot + 1] = prevG + (g - prevG) * amt;
-  buf[slot + 2] = prevB + (b - prevB) * amt;
+  buf[slot] = byte(prevR + (r - prevR) * amt);
+  buf[slot + 1] = byte(prevG + (g - prevG) * amt);
+  buf[slot + 2] = byte(prevB + (b - prevB) * amt);
+  buf[slot + 3] = 255;
 };
 
 const applyBoth = (
@@ -283,9 +292,9 @@ const applyBoth = (
     let bgPhase = y * bgRow + bgShift;
 
     for (let x = 0; x < width; x++, cell++, slot += 4) {
-      const r = fg[slot]!;
-      const g = fg[slot + 1]!;
-      const b = fg[slot + 2]!;
+      const r = channel(fg[slot]!);
+      const g = channel(fg[slot + 1]!);
+      const b = channel(fg[slot + 2]!);
 
       if (
         (Math.abs(r - textR) <= eps && Math.abs(g - textG) <= eps && Math.abs(b - textB) <= eps) ||
@@ -294,9 +303,9 @@ const applyBoth = (
         paintFull(fg, slot, palette, paletteCount, fgPhase);
       }
 
-      const br = bg[slot]!;
-      const bgg = bg[slot + 1]!;
-      const bb = bg[slot + 2]!;
+      const br = channel(bg[slot]!);
+      const bgg = channel(bg[slot + 1]!);
+      const bb = channel(bg[slot + 2]!);
       const matchBg =
         (Math.abs(br - bg0r) <= eps && Math.abs(bgg - bg0g) <= eps && Math.abs(bb - bg0b) <= eps) ||
         (Math.abs(br - bg1r) <= eps && Math.abs(bgg - bg1g) <= eps && Math.abs(bb - bg1b) <= eps) ||
@@ -347,9 +356,9 @@ const applyFgOnly = (
     let fgPhase = y * fgRow + fgShift;
 
     for (let x = 0; x < width; x++, slot += 4) {
-      const r = fg[slot]!;
-      const g = fg[slot + 1]!;
-      const b = fg[slot + 2]!;
+      const r = channel(fg[slot]!);
+      const g = channel(fg[slot + 1]!);
+      const b = channel(fg[slot + 2]!);
       if (
         (Math.abs(r - textR) <= eps && Math.abs(g - textG) <= eps && Math.abs(b - textB) <= eps) ||
         (Math.abs(r - mutedR) <= eps && Math.abs(g - mutedG) <= eps && Math.abs(b - mutedB) <= eps)
@@ -392,12 +401,12 @@ const applyBgOnly = (
     let bgPhase = y * bgRow + bgShift;
 
     for (let x = 0; x < width; x++, cell++, slot += 4) {
-      const r = fg[slot]!;
-      const g = fg[slot + 1]!;
-      const b = fg[slot + 2]!;
-      const br = bg[slot]!;
-      const bgg = bg[slot + 1]!;
-      const bb = bg[slot + 2]!;
+      const r = channel(fg[slot]!);
+      const g = channel(fg[slot + 1]!);
+      const b = channel(fg[slot + 2]!);
+      const br = channel(bg[slot]!);
+      const bgg = channel(bg[slot + 1]!);
+      const bb = channel(bg[slot + 2]!);
       const matchBg =
         (Math.abs(br - bg0r) <= eps && Math.abs(bgg - bg0g) <= eps && Math.abs(bb - bg0b) <= eps) ||
         (Math.abs(br - bg1r) <= eps && Math.abs(bgg - bg1g) <= eps && Math.abs(bb - bg1b) <= eps) ||

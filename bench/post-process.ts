@@ -41,8 +41,8 @@ type Scenario = {
   height: number;
   cfg: RainbowConfig;
   themeMode: ThemeMode;
-  templateFg: Float32Array;
-  templateBg: Float32Array;
+  templateFg: Uint16Array;
+  templateBg: Uint16Array;
   templateChar: Uint32Array;
 };
 
@@ -89,11 +89,18 @@ const rgbKey = (ink: RainbowColor) => {
 const pickColor = (list: RainbowColor[], rand: () => number) =>
   list[Math.floor(rand() * list.length)] ?? list[0]!;
 
-const setColor = (buf: Float32Array, slot: number, ink: RainbowColor) => {
-  buf[slot] = ink.r;
-  buf[slot + 1] = ink.g;
-  buf[slot + 2] = ink.b;
-  buf[slot + 3] = ink.a;
+const byte = (value: number) => {
+  const clamped = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+  return Math.round(clamped * 255);
+};
+
+const channel = (value: number) => (value & 255) / 255;
+
+const setColor = (buf: Uint16Array, slot: number, ink: RainbowColor) => {
+  buf[slot] = byte(ink.r);
+  buf[slot + 1] = byte(ink.g);
+  buf[slot + 2] = byte(ink.b);
+  buf[slot + 3] = byte(ink.a);
 };
 
 const same = (ink: RainbowColor, r: number, g: number, b: number) => {
@@ -115,7 +122,7 @@ const hit = (list: RainbowColor[], r: number, g: number, b: number) => {
 };
 
 const paint = (
-  buf: Float32Array,
+  buf: Uint16Array,
   slot: number,
   list: RainbowColor[],
   step: number,
@@ -129,13 +136,14 @@ const paint = (
   const r = a.r + (z.r - a.r) * gap;
   const g = a.g + (z.g - a.g) * gap;
   const b = a.b + (z.b - a.b) * gap;
-  const prevR = buf[slot]!;
-  const prevG = buf[slot + 1]!;
-  const prevB = buf[slot + 2]!;
+  const prevR = channel(buf[slot]!);
+  const prevG = channel(buf[slot + 1]!);
+  const prevB = channel(buf[slot + 2]!);
 
-  buf[slot] = prevR + (r - prevR) * amt;
-  buf[slot + 1] = prevG + (g - prevG) * amt;
-  buf[slot + 2] = prevB + (b - prevB) * amt;
+  buf[slot] = byte(prevR + (r - prevR) * amt);
+  buf[slot + 1] = byte(prevG + (g - prevG) * amt);
+  buf[slot + 2] = byte(prevB + (b - prevB) * amt);
+  buf[slot + 3] = 255;
 };
 
 const pick = (theme: RainbowTheme) => {
@@ -180,9 +188,9 @@ const createBaselinePostProcess: ImplFactory = (theme, value) => {
       for (let x = 0; x < buffer.width; x++) {
         const cell = y * buffer.width + x;
         const slot = cell * 4;
-        const r = fg[slot]!;
-        const g = fg[slot + 1]!;
-        const b = fg[slot + 2]!;
+        const r = channel(fg[slot]!);
+        const g = channel(fg[slot + 1]!);
+        const b = channel(fg[slot + 2]!);
         const step = ((x * dx + y * dy) / span) * cfg.turns + time * 0.1;
         if (cfg.fg && hit(fgmark, r, g, b)) {
           paint(fg, slot, list, step, 1);
@@ -190,9 +198,9 @@ const createBaselinePostProcess: ImplFactory = (theme, value) => {
 
         if (!cfg.bg || !cfg.glow) continue;
 
-        const br = bg[slot]!;
-        const bgg = bg[slot + 1]!;
-        const bb = bg[slot + 2]!;
+        const br = channel(bg[slot]!);
+        const bgg = channel(bg[slot + 1]!);
+        const bb = channel(bg[slot + 2]!);
         if (!hit(bgmark, br, bgg, bb)) continue;
 
         const haze = ((x * dx + y * dy) / span) * blur + time * 0.04 + 0.17;
@@ -305,8 +313,8 @@ const createScenario = (input: {
   ]);
   const rand = createRng(input.seed);
   const size = input.width * input.height;
-  const templateFg = new Float32Array(size * 4);
-  const templateBg = new Float32Array(size * 4);
+  const templateFg = new Uint16Array(size * 4);
+  const templateBg = new Uint16Array(size * 4);
   const templateChar = new Uint32Array(size);
 
   for (let cell = 0, slot = 0; cell < size; cell++, slot += 4) {
@@ -403,8 +411,8 @@ const createBuffer = (scenario: Scenario): RainbowBuffer => ({
   height: scenario.height,
   buffers: {
     char: new Uint32Array(scenario.templateChar.length),
-    fg: new Float32Array(scenario.templateFg.length),
-    bg: new Float32Array(scenario.templateBg.length),
+    fg: new Uint16Array(scenario.templateFg.length),
+    bg: new Uint16Array(scenario.templateBg.length),
   },
 });
 

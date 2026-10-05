@@ -24,11 +24,11 @@ Or from OpenCode commands:
 2. Select `Install Plugin`
 3. Enter `oc-plugin-rainbow`
 
-Requires OpenCode `>=1.3.14`.
+Requires OpenCode `>=2.0.23`.
 
 ## Options
 
-Plugin options can be configured via the `tui.json` config file.
+Plugin options can be configured via the `cli.json` config file.
 
 ### TUI
 
@@ -44,11 +44,11 @@ Example:
 
 ```json
 {
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": [
-    [
-      "oc-plugin-rainbow",
-      {
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "plugins": [
+    {
+      "package": "oc-plugin-rainbow",
+      "options": {
         "enabled": true,
         "fg": true,
         "bg": true,
@@ -56,7 +56,7 @@ Example:
         "turns": 3,
         "glow": 0.05
       }
-    ]
+    }
   ]
 }
 ```
@@ -69,9 +69,9 @@ Point a TUI config at the package directory:
 
 ```json
 {
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": [["../../oc-plugin-rainbow", { "enabled": true }]]
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "plugins": [{ "package": "../../oc-plugin-rainbow", "options": { "enabled": true } }]
 }
 ```
 
-The package exports its TUI entry at `./tui` and provides default config via `package.json`.
+The package exports its TUI entry at `./tui` and renders with `@opentui/solid`.

@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { RGBA, TextAttributes } from "@opentui/core";
-import type { TuiThemeCurrent } from "@opencode-ai/plugin/tui";
+import { usePlugin } from "@opencode/plugin/tui";
 import { For, createMemo, type JSX } from "solid-js";
 import { useKeyboard } from "@opentui/solid";
 
@@ -87,8 +87,9 @@ const renderLine = (line: string, fg: RGBA, background: RGBA, bold: boolean): JS
   return elements;
 };
 
-export function LogoScreen(props: { theme: () => TuiThemeCurrent; onExit: () => void }) {
-  const theme = createMemo(() => props.theme());
+export function LogoScreen(props: { onExit: () => void }) {
+  const context = usePlugin();
+  const theme = createMemo(() => context.theme);
 
   useKeyboard((evt) => {
     if (evt.name !== "escape") return;
@@ -105,10 +106,10 @@ export function LogoScreen(props: { theme: () => TuiThemeCurrent; onExit: () => 
           {(line, index) => (
             <box flexDirection="row" gap={1}>
               <box flexDirection="row">
-                {renderLine(line, theme().textMuted, theme().background, false)}
+                {renderLine(line, theme().text.muted, theme().background.base, false)}
               </box>
               <box flexDirection="row">
-                {renderLine(logo.right[index()] ?? "", theme().text, theme().background, true)}
+                {renderLine(logo.right[index()] ?? "", theme().text.base, theme().background.base, true)}
               </box>
             </box>
           )}

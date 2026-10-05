@@ -1,9 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { useKeyboard } from "@opentui/solid";
-import type { TuiPlugin } from "@opencode-ai/plugin/tui";
-import { createMemo, createSignal } from "solid-js";
-
-type Api = Parameters<TuiPlugin>[0];
+import { usePlugin } from "@opencode/plugin/tui";
+import { createSignal, For } from "solid-js";
 
 export type SettingsState = {
   fg: boolean;
@@ -95,27 +93,6 @@ export const settingByField = Object.fromEntries(rows.map((item) => [item.key, i
   [K in NumberField]: NumberRow;
 };
 
-export const createSettingKey = (id: string) => {
-  return {
-    fg: `${id}.setting.fg`,
-    bg: `${id}.setting.bg`,
-    speed: `${id}.setting.speed`,
-    turns: `${id}.setting.turns`,
-    glow: `${id}.setting.glow`,
-  } as const;
-};
-
-const field = (value: unknown): Field | undefined => {
-  if (
-    value === "fg" ||
-    value === "bg" ||
-    value === "speed" ||
-    value === "turns" ||
-    value === "glow"
-  )
-    return value;
-};
-
 const status = (value: boolean) => {
   return value ? "ON" : "OFF";
 };
@@ -125,36 +102,42 @@ const metric = (value: SettingsState, key: NumberField) => {
 };
 
 export const SettingsDialog = (props: {
-  api: Api;
   value: () => SettingsState;
   flip: (key: ToggleField) => void;
   tune: (key: NumberField, dir: -1 | 1) => void;
 }) => {
+  const context = usePlugin();
   const [cur, setCur] = createSignal<Field>(rows[0]?.key ?? "fg");
-  const theme = createMemo(() => props.api.theme.current);
-  const current = createMemo(() => settingByField[cur()] ?? settingByField.fg);
-  const options = createMemo(() => {
-    const value = props.value();
-    return rows.map((item) => {
-      const footer = item.kind === "toggle" ? status(value[item.key]) : metric(value, item.key);
-      return {
-        title: item.title,
-        value: item.key,
-        description: item.description,
-        category: item.category,
-        footer,
-      };
-    });
-  });
+  const current = () => settingByField[cur()] ?? settingByField.fg;
+
+  const move = (dir: -1 | 1) => {
+    const keys = rows.map((row) => row.key);
+    const index = keys.indexOf(cur());
+    const next = keys[(index + dir + keys.length) % keys.length];
+    if (next) setCur(next);
+  };
 
   useKeyboard((evt) => {
     const item = current();
     if (!item) return;
 
-    if (evt.name === "space" && item.kind === "toggle") {
+    if (evt.name === "up" || evt.name === "k") {
       evt.preventDefault();
       evt.stopPropagation();
-      props.flip(item.key);
+      move(-1);
+      return;
+    }
+    if (evt.name === "down" || evt.name === "j") {
+      evt.preventDefault();
+      evt.stopPropagation();
+      move(1);
+      return;
+    }
+
+    if (evt.name === "space" || evt.name === "enter") {
+      evt.preventDefault();
+      evt.stopPropagation();
+      if (item.kind === "toggle") props.flip(item.key);
       return;
     }
 
@@ -170,46 +153,48 @@ export const SettingsDialog = (props: {
 
   return (
     <box flexDirection="column">
-      <props.api.ui.DialogSelect
-        title="Rainbow settings"
-        placeholder="Filter settings"
-        options={options()}
-        current={cur()}
-        onMove={(item) => {
-          const next = field(item.value);
-          if (!next) return;
-          setCur(next);
-        }}
-        onSelect={(item) => {
-          const next = field(item.value);
-          if (!next) return;
-          setCur(next);
-          const row = settingByField[next];
-          if (row.kind === "toggle") {
-            props.flip(row.key);
-          }
-        }}
-      />
-      <box
-        paddingRight={2}
-        paddingLeft={4}
-        flexDirection="row"
-        gap={2}
-        paddingTop={1}
-        paddingBottom={1}
-        flexShrink={0}
-      >
+      <box paddingLeft={2} paddingTop={1} flexShrink={0}>
         <text>
-          <span style={{ fg: theme().text }}>
+          <b>Rainbow settings</b>
+        </text>
+      </box>
+      <box flexDirection="column" paddingLeft={2} paddingTop={1} flexShrink={0}>
+        <For each={rows}>
+          {(item) => {
+            const active = () => cur() === item.key;
+            const footer = () => (item.kind === "toggle" ? status(props.value()[item.key]) : metric(props.value(), item.key));
+            return (
+              <box flexDirection="column" paddingBottom={1}>
+                <text>
+                  <span style={{ fg: active() ? context.theme.hue.accent[500] : context.theme.text.base }}>
+                    {active() ? "▸ " : "  "}
+                    <b>{item.title}</b>
+                  </span>
+                  <span style={{ fg: context.theme.text.muted }}>  [{item.category}]  {footer()}</span>
+                </text>
+                <text>
+                  <span style={{ fg: context.theme.text.muted }}>
+                    {"    "}
+                    {item.description}
+                  </span>
+                </text>
+              </box>
+            );
+          }}
+        </For>
+      </box>
+      <box paddingLeft={4} paddingBottom={1} flexDirection="row" gap={2} flexShrink={0}>
+        <text>
+          <span style={{ fg: context.theme.text.base }}>
             <b>toggle</b>{" "}
           </span>
-          <span style={{ fg: theme().textMuted }}>space enter left/right</span>
+          <span style={{ fg: context.theme.text.muted }}>space enter left/right</span>
         </text>
         <text>
-          <span style={{ fg: theme().text }}>
+          <span style={{ fg: context.theme.text.base }}>
             <b>adjust</b>{" "}
           </span>
-          <span style={{ fg: theme().textMuted }}>left/right</span>
+          <span style={{ fg: context.theme.text.muted }}>left/right</span>
         </text>
       </box>
     </box>
