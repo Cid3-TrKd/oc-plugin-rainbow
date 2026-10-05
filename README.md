@@ -2,7 +2,7 @@
 
 Theme-aware rainbow post-processing for the OpenCode TUI.
 
-![Rainbow stripe preview](https://raw.githubusercontent.com/anomalyco/oc-plugin-rainbow/main/assets/rainbow-stripe.svg)
+![Rainbow stripe preview](https://raw.githubusercontent.com/Cid3-TrKd/oc-plugin-rainbow/main/assets/rainbow-stripe.svg)
 
 It adds:
 

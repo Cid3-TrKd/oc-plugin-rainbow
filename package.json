@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anomalyco/oc-plugin-rainbow.git"
+    "url": "git+https://github.com/Cid3-TrKd/oc-plugin-rainbow.git"
   },
   "type": "module",
   "exports": {
